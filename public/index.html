@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
   <title>Room status</title>
   <style>
     :root {
@@ -97,6 +98,45 @@
 
     #availability strong { font-weight: 700; }
 
+    #booking {
+      margin-top: 26px;
+    }
+
+    #booking p {
+      margin: 0 0 12px;
+      font-size: 24px;
+      font-weight: 700;
+      line-height: 1.15;
+    }
+
+    .booking-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .booking-button {
+      min-height: 54px;
+      padding: 10px 16px;
+      border: 2px solid #111;
+      border-radius: 0;
+      color: #111;
+      background: #fff;
+      font: 700 24px/1 Arial, Helvetica, sans-serif;
+      touch-action: manipulation;
+    }
+
+    .booking-button.primary {
+      color: #fff;
+      background: #111;
+    }
+
+    #book-message {
+      margin-top: 12px;
+      font-size: 20px;
+      font-weight: 400;
+    }
+
     .meeting-section {
       margin-top: auto;
       margin-bottom: 44px;
@@ -154,6 +194,25 @@
       <h2 id="status" class="serif">Loading</h2>
       <p id="current-organizer" hidden></p>
       <p id="availability">Checking the room…</p>
+      <section id="booking" hidden>
+        <button id="book-open" class="booking-button primary" type="button">Book now</button>
+        <div id="book-options" hidden>
+          <p>Choose a duration</p>
+          <div class="booking-actions">
+            <button class="booking-button duration-button" data-duration="15" type="button">15 min</button>
+            <button class="booking-button duration-button" data-duration="30" type="button">30 min</button>
+            <button id="book-options-cancel" class="booking-button" type="button">Cancel</button>
+          </div>
+        </div>
+        <div id="book-confirm" hidden>
+          <p id="book-confirm-text"></p>
+          <div class="booking-actions">
+            <button id="book-submit" class="booking-button primary" type="button">Confirm</button>
+            <button id="book-cancel" class="booking-button" type="button">Cancel</button>
+          </div>
+        </div>
+        <p id="book-message" hidden></p>
+      </section>
     </section>
 
     <section id="meeting" class="meeting-section" hidden>
@@ -174,13 +233,25 @@
     var API_BASE = configuredBase || (location.hostname.indexOf("vercel.app") !== -1 ? "" : PLACEHOLDER_API_BASE);
     var queryMatch = location.search.match(/[?&]room=([^&]+)/i);
     var roomKey = queryMatch ? decodeURIComponent(queryMatch[1].replace(/\+/g, " ")).toLowerCase() : "lovelace";
+    var bookingMatch = location.hash.match(/(?:^#|&)book=([^&]+)/i);
+    var bookingKey = bookingMatch ? decodeURIComponent(bookingMatch[1]) : "";
     var refreshMs = 60000;
     var hasLiveData = false;
+    var chosenDuration = null;
 
     function element(id) { return document.getElementById(id); }
 
     function setText(id, value) {
       element(id).textContent = value || "";
+    }
+
+    function resetBooking() {
+      chosenDuration = null;
+      element("book-open").hidden = false;
+      element("book-options").hidden = true;
+      element("book-confirm").hidden = true;
+      element("book-message").hidden = true;
+      element("book-submit").disabled = false;
     }
 
     function render(data) {
@@ -193,6 +264,10 @@
       setText("current-organizer", showingCurrentMeeting ? data.current.organizer : "");
       element("current-organizer").hidden = !showingCurrentMeeting || !data.current.organizer;
       setText("availability", data.until ? "Until " + data.until : "For the rest of the day");
+
+      var canBook = data.status === "free" && bookingKey;
+      element("booking").hidden = !canBook;
+      if (!canBook) resetBooking();
 
       if (data.next) {
         element("meeting").hidden = false;
@@ -210,6 +285,57 @@
       setText("status", "Offline");
       setText("availability", "Status unavailable — retrying");
       element("meeting").hidden = true;
+      element("booking").hidden = true;
+    }
+
+    function openBookingOptions() {
+      element("book-open").hidden = true;
+      element("book-options").hidden = false;
+      element("book-confirm").hidden = true;
+      element("book-message").hidden = true;
+    }
+
+    function chooseDuration(duration) {
+      chosenDuration = duration;
+      element("book-options").hidden = true;
+      element("book-confirm").hidden = false;
+      setText("book-confirm-text", "Book for " + duration + " minutes?");
+    }
+
+    function showBookingMessage(message) {
+      setText("book-message", message);
+      element("book-message").hidden = false;
+    }
+
+    function submitBooking() {
+      if (!chosenDuration) return;
+      element("book-submit").disabled = true;
+      showBookingMessage("Booking…");
+
+      var request = new XMLHttpRequest();
+      request.open("POST", API_BASE + "/api/book", true);
+      request.timeout = 20000;
+      request.setRequestHeader("Content-Type", "application/json");
+      request.setRequestHeader("X-Booking-Key", bookingKey);
+      request.onload = function () {
+        var response = {};
+        try { response = JSON.parse(request.responseText); } catch (error) {}
+        if (request.status >= 200 && request.status < 300) {
+          element("book-confirm").hidden = true;
+          showBookingMessage("Booked — updating display…");
+          setTimeout(update, 3000);
+          setTimeout(update, 35000);
+        } else {
+          element("book-submit").disabled = false;
+          showBookingMessage(response.error || "Could not book the room");
+        }
+      };
+      request.onerror = function () {
+        element("book-submit").disabled = false;
+        showBookingMessage("Could not reach the booking service");
+      };
+      request.ontimeout = request.onerror;
+      request.send(JSON.stringify({ room: roomKey, duration: chosenDuration }));
     }
 
     function update() {
@@ -235,6 +361,16 @@
 
     update();
     setInterval(update, refreshMs);
+    element("book-open").onclick = openBookingOptions;
+    element("book-options-cancel").onclick = resetBooking;
+    element("book-cancel").onclick = resetBooking;
+    element("book-submit").onclick = submitBooking;
+    var durationButtons = document.getElementsByClassName("duration-button");
+    for (var i = 0; i < durationButtons.length; i += 1) {
+      durationButtons[i].onclick = function () {
+        chooseDuration(Number(this.getAttribute("data-duration")));
+      };
+    }
   </script>
 </body>
 </html>
