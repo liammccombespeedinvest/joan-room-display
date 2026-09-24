@@ -5,10 +5,14 @@
     },
     "api/book.js": {
       "maxDuration": 20
+    },
+    "api/booking-qr.js": {
+      "maxDuration": 10
     }
   },
   "rewrites": [
-    { "source": "/", "destination": "/public/index.html" }
+    { "source": "/", "destination": "/public/index.html" },
+    { "source": "/book.html", "destination": "/public/book.html" }
   ],
   "headers": [
     {
