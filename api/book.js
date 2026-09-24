@@ -2,7 +2,7 @@ import { timingSafeEqual } from "node:crypto";
 import { bookingWindow, buildReservationPayload, hasConflict } from "../lib/booking.js";
 import {
   createReservation,
-  fetchRelevantReservations,
+  fetchLatestReservations,
   fetchRoom,
   getAccessToken
 } from "../lib/joan.js";
@@ -76,11 +76,10 @@ export default async function handler(req, res) {
 
   try {
     const token = await getAccessToken({ clientId, clientSecret });
-    const reservations = await fetchRelevantReservations({
-      token,
-      now: Date.now(),
-      fresh: true
-    });
+    const [reservations, joanRoom] = await Promise.all([
+      fetchLatestReservations({ token }),
+      fetchRoom({ token, roomId: room.id })
+    ]);
 
     if (hasConflict({
       reservations,
@@ -91,7 +90,6 @@ export default async function handler(req, res) {
       return res.status(409).json({ error: "The room is no longer free for that duration" });
     }
 
-    const joanRoom = await fetchRoom({ token, roomId: room.id });
     if (!joanRoom.key) throw new Error("Joan room has no calendar address");
 
     const payload = buildReservationPayload({
