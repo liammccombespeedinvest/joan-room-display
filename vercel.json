@@ -2,6 +2,9 @@
   "functions": {
     "api/room.js": {
       "maxDuration": 20
+    },
+    "api/book.js": {
+      "maxDuration": 20
     }
   },
   "rewrites": [
