@@ -139,6 +139,34 @@
       font-weight: 400;
     }
 
+    #qr-booking {
+      margin-top: 22px;
+    }
+
+    #qr-booking-title {
+      margin: 0 0 8px;
+      font-size: 25px;
+      font-weight: 700;
+    }
+
+    #booking-qr {
+      width: 176px;
+      height: 176px;
+      background: #fff;
+    }
+
+    #booking-qr svg {
+      display: block;
+      width: 176px;
+      height: 176px;
+    }
+
+    #qr-booking-note {
+      margin: 7px 0 0;
+      font-size: 19px;
+      line-height: 1.15;
+    }
+
     .meeting-section {
       margin-top: auto;
       margin-bottom: 44px;
@@ -215,6 +243,11 @@
         </div>
         <p id="book-message" hidden></p>
       </section>
+      <section id="qr-booking" hidden>
+        <p id="qr-booking-title">Scan to book</p>
+        <div id="booking-qr" aria-label="QR code for walk-up booking"></div>
+        <p id="qr-booking-note">Choose 15 or 30 minutes</p>
+      </section>
     </section>
 
     <section id="meeting" class="meeting-section" hidden>
@@ -240,6 +273,7 @@
     var refreshMs = 60000;
     var hasLiveData = false;
     var chosenDuration = null;
+    var qrLoaded = false;
 
     function element(id) { return document.getElementById(id); }
 
@@ -269,6 +303,30 @@
       element("book-submit").disabled = false;
     }
 
+    function loadBookingQr() {
+      if (qrLoaded || !bookingKey) return;
+      qrLoaded = true;
+      setText("booking-qr", "Loading…");
+      var request = new XMLHttpRequest();
+      request.open("GET", API_BASE + "/api/booking-qr?room=" + encodeURIComponent(roomKey), true);
+      request.timeout = 15000;
+      request.setRequestHeader("X-Booking-Key", bookingKey);
+      request.onload = function () {
+        if (request.status >= 200 && request.status < 300) {
+          element("booking-qr").innerHTML = request.responseText;
+        } else {
+          qrLoaded = false;
+          setText("booking-qr", "QR unavailable");
+        }
+      };
+      request.onerror = function () {
+        qrLoaded = false;
+        setText("booking-qr", "QR unavailable");
+      };
+      request.ontimeout = request.onerror;
+      request.send();
+    }
+
     function render(data) {
       hasLiveData = true;
       setText("room-name", data.room);
@@ -281,7 +339,9 @@
       setText("availability", data.until ? "Until " + data.until : "For the rest of the day");
 
       var canBook = data.status === "free" && bookingKey;
-      element("booking").hidden = !canBook;
+      element("booking").hidden = true;
+      element("qr-booking").hidden = !canBook;
+      if (canBook) loadBookingQr();
       if (!canBook) resetBooking();
 
       if (data.next) {
@@ -301,6 +361,7 @@
       setText("availability", "Status unavailable — retrying");
       element("meeting").hidden = true;
       element("booking").hidden = true;
+      element("qr-booking").hidden = true;
     }
 
     function openBookingOptions() {
