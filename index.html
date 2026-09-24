@@ -1,281 +1,454 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-api-base="">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="color-scheme" content="light only">
-  <title>Lovelace — Joan room status proof of concept</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="referrer" content="no-referrer">
+  <title>Room status</title>
   <style>
     :root {
-      --ink: #111;
-      --paper: #fff;
-      --muted: #555;
-      --rule: #1a1a1a;
-      --edge: clamp(26px, 8vw, 58px);
-      --serif: "Ancizar Serif", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
-      --sans: Arial, Helvetica, sans-serif;
+      color: #111;
+      background: #fff;
+      font-family: Arial, Helvetica, sans-serif;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
 
-    html,
-    body {
+    html, body {
       width: 100%;
-      height: 100%;
+      min-height: 100%;
       margin: 0;
       overflow: hidden;
-      background: var(--paper);
-      color: var(--ink);
+      background: #fff;
     }
 
     body {
-      font-family: var(--sans);
-      -webkit-font-smoothing: antialiased;
-      text-rendering: optimizeLegibility;
+      min-height: 100vh;
+      padding: 28px 24px;
+      padding: clamp(18px, 7vw, 42px) clamp(16px, 8vw, 46px);
     }
 
-    .panel {
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      width: 100%;
-      height: 100%;
-      min-height: 360px;
-      padding: clamp(30px, 6vh, 52px) var(--edge) clamp(28px, 5vh, 46px);
-      background: var(--paper);
+    main {
+      display: flex;
+      min-height: calc(100vh - 56px);
+      min-height: calc(100vh - clamp(36px, 14vw, 84px));
+      flex-direction: column;
     }
 
-    .room-name,
-    .status,
-    .meeting-title {
-      font-family: var(--serif);
+    .serif {
+      font-family: "Ancizar Serif", Georgia, "Times New Roman", serif;
       font-weight: 400;
     }
 
-    .room-name {
+    #room-name {
       margin: 0;
-      font-size: clamp(25px, 7.3vw, 42px);
+      font-size: 34px;
+      font-size: clamp(25px, 9vw, 44px);
       line-height: 1;
-      letter-spacing: -0.02em;
     }
 
-    .availability {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      min-height: 0;
-      padding: clamp(22px, 5vh, 42px) 0;
-    }
-
-    .availability::before,
-    .next-meeting::before {
-      display: block;
+    hr {
       width: 100%;
-      height: 2px;
-      margin-bottom: clamp(18px, 3.8vh, 30px);
-      background: var(--rule);
-      content: "";
+      margin: 22px 0;
+      margin: clamp(14px, 5vh, 30px) 0;
+      border: 0;
+      border-top: 1px solid #111;
     }
 
-    .status {
+    #status {
       margin: 0;
-      font-size: clamp(76px, 23vw, 136px);
-      line-height: 0.82;
-      letter-spacing: -0.065em;
+      font-size: 72px;
+      font-size: clamp(50px, 20vw, 98px);
+      line-height: .9;
     }
 
-    .until {
-      margin: clamp(22px, 4vh, 34px) 0 0;
-      font-size: clamp(18px, 5.5vw, 30px);
-      line-height: 1.2;
-      letter-spacing: -0.01em;
+    #status.current-meeting {
+      display: -webkit-box;
+      overflow: hidden;
+      padding-bottom: 6px;
+      font-size: 64px;
+      font-size: clamp(58px, 16vw, 72px);
+      line-height: 1.15;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
     }
 
-    .until-time {
+    #status-label {
+      margin: 0 0 10px;
+      font-size: 24px;
       font-weight: 700;
-      font-variant-numeric: tabular-nums;
     }
 
-    .next-meeting {
-      align-self: end;
+    #current-organizer {
+      margin: 16px 0 0;
+      font-size: 31px;
+      font-size: clamp(28px, 8vw, 36px);
+      line-height: 1.25;
     }
 
-    .eyebrow {
-      margin: 0 0 clamp(10px, 2vh, 16px);
-      color: var(--muted);
-      font-size: clamp(14px, 3.7vw, 20px);
-      line-height: 1;
+    #availability {
+      min-height: 1.3em;
+      margin: 18px 0 0;
+      margin: clamp(16px, 4vh, 24px) 0 0;
+      font-size: 36px;
+      font-size: clamp(32px, 9vw, 42px);
+      line-height: 1.25;
     }
 
-    .meeting-title {
-      margin: 0;
-      font-size: clamp(30px, 8.5vw, 50px);
-      line-height: 1;
-      letter-spacing: -0.03em;
-      overflow-wrap: anywhere;
+    #availability strong { font-weight: 700; }
+
+    #booking {
+      margin-top: 26px;
     }
 
-    .meeting-time {
-      margin: clamp(13px, 2.5vh, 20px) 0 0;
-      font-size: clamp(17px, 4.6vw, 25px);
-      line-height: 1;
+    #booking p {
+      margin: 0 0 12px;
+      font-size: 24px;
       font-weight: 700;
-      font-variant-numeric: tabular-nums;
+      line-height: 1.15;
     }
 
-    .preview-controls {
-      position: fixed;
-      right: 10px;
-      bottom: 10px;
-      z-index: 2;
-      display: none;
-      gap: 6px;
-      padding: 6px;
-      border: 1px solid #999;
-      background: #fff;
-      font: 12px/1 var(--sans);
-    }
-
-    .show-controls .preview-controls {
+    .booking-actions {
       display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
-    .preview-controls button {
-      min-width: 54px;
-      padding: 8px 10px;
-      border: 1px solid #111;
+    .booking-button {
+      min-height: 54px;
+      padding: 10px 16px;
+      border: 2px solid #111;
       border-radius: 0;
-      background: #fff;
       color: #111;
-      font: inherit;
+      background: #fff;
+      font: 700 24px/1 Arial, Helvetica, sans-serif;
       cursor: pointer;
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
-    .preview-controls button[aria-pressed="true"] {
-      background: #111;
+    .booking-button.primary {
       color: #fff;
+      background: #111;
     }
 
-    @media (max-height: 520px) {
-      .panel {
-        padding-top: 24px;
-        padding-bottom: 22px;
-      }
-
-      .availability {
-        padding: 18px 0;
-      }
-
-      .availability::before,
-      .next-meeting::before {
-        margin-bottom: 14px;
-      }
-
-      .status {
-        font-size: clamp(58px, 18vh, 92px);
-      }
-
-      .until {
-        margin-top: 14px;
-      }
-
-      .meeting-title {
-        font-size: clamp(25px, 7vh, 38px);
-      }
+    #book-message {
+      margin-top: 12px;
+      font-size: 20px;
+      font-weight: 400;
     }
 
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        scroll-behavior: auto !important;
-      }
+    #qr-booking {
+      margin-top: 22px;
     }
 
-    @media print {
-      .preview-controls {
-        display: none !important;
-      }
+    #qr-booking-title {
+      margin: 0 0 8px;
+      font-size: 25px;
+      font-weight: 700;
     }
+
+    #booking-qr {
+      width: 176px;
+      height: 176px;
+      background: #fff;
+    }
+
+    #booking-qr svg {
+      display: block;
+      width: 176px;
+      height: 176px;
+    }
+
+    #qr-booking-note {
+      margin: 7px 0 0;
+      font-size: 19px;
+      line-height: 1.15;
+    }
+
+    .meeting-section {
+      margin-top: auto;
+      margin-bottom: 44px;
+    }
+
+    .meeting-section hr {
+      margin-top: 24px;
+      margin-top: clamp(18px, 5vh, 32px);
+      margin-bottom: 14px;
+      margin-bottom: clamp(10px, 3vh, 18px);
+    }
+
+    #meeting-label {
+      margin: 0 0 6px;
+      color: #333;
+      font-size: 24px;
+      font-size: clamp(22px, 6vw, 28px);
+      font-weight: 700;
+    }
+
+    #meeting-title {
+      display: -webkit-box;
+      overflow: hidden;
+      margin: 0;
+      padding-bottom: 5px;
+      font-size: 48px;
+      font-size: clamp(42px, 12vw, 56px);
+      line-height: 1.15;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 2;
+    }
+
+    #organizer, #meeting-time {
+      margin: 12px 0 0;
+      font-size: 29px;
+      font-size: clamp(26px, 7vw, 34px);
+      line-height: 1.25;
+    }
+
+    #freshness {
+      margin: 8px 0 0;
+      color: #555;
+      font-size: 10px;
+    }
+
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
-  <main class="panel" aria-label="Room availability">
-    <header>
-      <h1 class="room-name" id="roomName">Lovelace</h1>
-    </header>
-
-    <section class="availability" aria-live="polite">
-      <p class="status" id="status">Free</p>
-      <p class="until"><span id="untilLabel">Until</span> <span class="until-time" id="untilTime">17:00</span></p>
+  <main aria-live="polite">
+    <h1 id="room-name" class="serif">Lovelace</h1>
+    <hr>
+    <section>
+      <p id="status-label" hidden>Now</p>
+      <h2 id="status" class="serif">Loading</h2>
+      <p id="current-organizer" hidden></p>
+      <p id="availability">Checking the room…</p>
+      <section id="booking" hidden>
+        <button id="book-open" class="booking-button primary" type="button">Book now</button>
+        <div id="book-options" hidden>
+          <p>Choose a duration</p>
+          <div class="booking-actions">
+            <button class="booking-button duration-button" data-duration="15" type="button">15 min</button>
+            <button class="booking-button duration-button" data-duration="30" type="button">30 min</button>
+            <button id="book-options-cancel" class="booking-button" type="button">Cancel</button>
+          </div>
+        </div>
+        <div id="book-confirm" hidden>
+          <p id="book-confirm-text"></p>
+          <div class="booking-actions">
+            <button id="book-submit" class="booking-button primary" type="button">Confirm</button>
+            <button id="book-cancel" class="booking-button" type="button">Cancel</button>
+          </div>
+        </div>
+        <p id="book-message" hidden></p>
+      </section>
+      <section id="qr-booking" hidden>
+        <p id="qr-booking-title">Scan to book</p>
+        <div id="booking-qr" aria-label="QR code for walk-up booking"></div>
+        <p id="qr-booking-note">Choose 15 or 30 minutes</p>
+      </section>
     </section>
 
-    <section class="next-meeting">
-      <p class="eyebrow" id="nextLabel">Next</p>
-      <p class="meeting-title" id="meetingTitle">Test test</p>
-      <p class="meeting-time" id="meetingTime">17:00–18:00</p>
+    <section id="meeting" class="meeting-section" hidden>
+      <hr>
+      <p id="meeting-label">Next</p>
+      <h3 id="meeting-title" class="serif"></h3>
+      <p id="organizer" hidden></p>
+      <p id="meeting-time"></p>
+      <p id="freshness" hidden></p>
     </section>
   </main>
 
-  <nav class="preview-controls" aria-label="Prototype state">
-    <button type="button" data-state="free">Free</button>
-    <button type="button" data-state="busy">Busy</button>
-  </nav>
-
   <script>
-    /*
-      Edit these values when testing different fake room states.
-      You can also use ?state=busy or ?state=free in the URL.
-      Add ?controls=1 to show small Free/Busy preview buttons.
-    */
-    const DISPLAY_DATA = {
-      free: {
-        roomName: "Lovelace",
-        status: "Free",
-        untilLabel: "Until",
-        untilTime: "17:00",
-        nextLabel: "Next",
-        meetingTitle: "Test test",
-        meetingTime: "17:00–18:00"
-      },
-      busy: {
-        roomName: "Lovelace",
-        status: "Busy",
-        untilLabel: "Until",
-        untilTime: "16:30",
-        nextLabel: "Next free",
-        meetingTitle: "From 16:30",
-        meetingTime: "Next meeting 17:00"
+    // For GitHub Pages, replace the placeholder below with the Vercel project URL.
+    // When this page is served by the same Vercel project, leave data-api-base blank.
+    var PLACEHOLDER_API_BASE = "https://YOUR-VERCEL-PROJECT.vercel.app";
+    var configuredBase = (document.documentElement.getAttribute("data-api-base") || "").replace(/^\s+|\s+$/g, "").replace(/\/$/, "");
+    var API_BASE = configuredBase || (location.hostname.indexOf("vercel.app") !== -1 ? "" : PLACEHOLDER_API_BASE);
+    var queryMatch = location.search.match(/[?&]room=([^&]+)/i);
+    var roomKey = queryMatch ? decodeURIComponent(queryMatch[1].replace(/\+/g, " ")).toLowerCase() : "lovelace";
+    var bookingMatch = location.hash.match(/(?:^#|&)book=([^&]+)/i);
+    var bookingKey = bookingMatch ? decodeURIComponent(bookingMatch[1]) : "";
+    var refreshMs = 60000;
+    var hasLiveData = false;
+    var chosenDuration = null;
+    var qrLoaded = false;
+
+    function element(id) { return document.getElementById(id); }
+
+    function setText(id, value) {
+      element(id).textContent = value || "";
+    }
+
+    function bindTap(target, handler) {
+      var handledByTouch = false;
+      target.ontouchend = function (event) {
+        handledByTouch = true;
+        if (event && event.preventDefault) event.preventDefault();
+        handler.call(target, event);
+        setTimeout(function () { handledByTouch = false; }, 700);
+      };
+      target.onclick = function (event) {
+        if (!handledByTouch) handler.call(target, event);
+      };
+    }
+
+    function resetBooking() {
+      chosenDuration = null;
+      element("book-open").hidden = false;
+      element("book-options").hidden = true;
+      element("book-confirm").hidden = true;
+      element("book-message").hidden = true;
+      element("book-submit").disabled = false;
+    }
+
+    function loadBookingQr() {
+      if (qrLoaded || !bookingKey) return;
+      qrLoaded = true;
+      setText("booking-qr", "Loading…");
+      var request = new XMLHttpRequest();
+      request.open("GET", API_BASE + "/api/booking-qr?room=" + encodeURIComponent(roomKey), true);
+      request.timeout = 15000;
+      request.setRequestHeader("X-Booking-Key", bookingKey);
+      request.onload = function () {
+        if (request.status >= 200 && request.status < 300) {
+          element("booking-qr").innerHTML = request.responseText;
+        } else {
+          qrLoaded = false;
+          setText("booking-qr", "QR unavailable");
+        }
+      };
+      request.onerror = function () {
+        qrLoaded = false;
+        setText("booking-qr", "QR unavailable");
+      };
+      request.ontimeout = request.onerror;
+      request.send();
+    }
+
+    function render(data) {
+      hasLiveData = true;
+      setText("room-name", data.room);
+      var showingCurrentMeeting = data.status === "busy" && data.current;
+      setText("status", showingCurrentMeeting ? data.current.title : (data.status === "busy" ? "Busy" : "Free"));
+      element("status").className = showingCurrentMeeting ? "serif current-meeting" : "serif";
+      element("status-label").hidden = !showingCurrentMeeting;
+      setText("current-organizer", showingCurrentMeeting ? data.current.organizer : "");
+      element("current-organizer").hidden = !showingCurrentMeeting || !data.current.organizer;
+      setText("availability", data.until ? "Until " + data.until : "For the rest of the day");
+
+      var canBook = data.status === "free" && bookingKey;
+      element("booking").hidden = true;
+      element("qr-booking").hidden = !canBook;
+      if (canBook) loadBookingQr();
+      if (!canBook) resetBooking();
+
+      if (data.next) {
+        element("meeting").hidden = false;
+        setText("meeting-title", data.next.title);
+        setText("meeting-time", data.next.start + "–" + data.next.end);
+        setText("organizer", data.next.organizer);
+        element("organizer").hidden = !data.next.organizer;
+      } else {
+        element("meeting").hidden = true;
       }
-    };
-
-    const params = new URLSearchParams(window.location.search);
-    let activeState = params.get("state") in DISPLAY_DATA ? params.get("state") : "free";
-
-    if (params.get("controls") === "1") {
-      document.body.classList.add("show-controls");
     }
 
-    function render(stateName) {
-      const data = DISPLAY_DATA[stateName] || DISPLAY_DATA.free;
-      activeState = stateName in DISPLAY_DATA ? stateName : "free";
-
-      Object.entries(data).forEach(([id, value]) => {
-        const element = document.getElementById(id);
-        if (element) element.textContent = value;
-      });
-
-      document.querySelectorAll("[data-state]").forEach((button) => {
-        button.setAttribute("aria-pressed", String(button.dataset.state === activeState));
-      });
+    function renderError() {
+      if (hasLiveData) return;
+      setText("status", "Offline");
+      setText("availability", "Status unavailable — retrying");
+      element("meeting").hidden = true;
+      element("booking").hidden = true;
+      element("qr-booking").hidden = true;
     }
 
-    document.querySelectorAll("[data-state]").forEach((button) => {
-      button.addEventListener("click", () => render(button.dataset.state));
-    });
+    function openBookingOptions() {
+      element("book-open").hidden = true;
+      element("book-options").hidden = false;
+      element("book-confirm").hidden = true;
+      element("book-message").hidden = true;
+    }
 
-    render(activeState);
+    function chooseDuration(duration) {
+      chosenDuration = duration;
+      element("book-options").hidden = true;
+      element("book-confirm").hidden = false;
+      setText("book-confirm-text", "Book for " + duration + " minutes?");
+    }
+
+    function showBookingMessage(message) {
+      setText("book-message", message);
+      element("book-message").hidden = false;
+    }
+
+    function submitBooking() {
+      if (!chosenDuration) return;
+      element("book-submit").disabled = true;
+      showBookingMessage("Booking…");
+
+      var request = new XMLHttpRequest();
+      request.open("POST", API_BASE + "/api/book", true);
+      request.timeout = 20000;
+      request.setRequestHeader("Content-Type", "application/json");
+      request.setRequestHeader("X-Booking-Key", bookingKey);
+      request.onload = function () {
+        var response = {};
+        try { response = JSON.parse(request.responseText); } catch (error) {}
+        if (request.status >= 200 && request.status < 300) {
+          element("book-confirm").hidden = true;
+          showBookingMessage("Booked — updating display…");
+          setTimeout(update, 3000);
+          setTimeout(update, 35000);
+        } else {
+          element("book-submit").disabled = false;
+          showBookingMessage(response.error || "Could not book the room");
+        }
+      };
+      request.onerror = function () {
+        element("book-submit").disabled = false;
+        showBookingMessage("Could not reach the booking service");
+      };
+      request.ontimeout = request.onerror;
+      request.send(JSON.stringify({ room: roomKey, duration: chosenDuration }));
+    }
+
+    function update() {
+      var request = new XMLHttpRequest();
+      var url = API_BASE + "/api/room?room=" + encodeURIComponent(roomKey) + "&t=" + Date.now();
+      request.open("GET", url, true);
+      request.timeout = 15000;
+      request.onload = function () {
+        if (request.status >= 200 && request.status < 300) {
+          try {
+            render(JSON.parse(request.responseText));
+          } catch (error) {
+            renderError();
+          }
+        } else {
+          renderError();
+        }
+      };
+      request.onerror = renderError;
+      request.ontimeout = renderError;
+      request.send();
+    }
+
+    update();
+    setInterval(update, refreshMs);
+    bindTap(element("book-open"), openBookingOptions);
+    bindTap(element("book-options-cancel"), resetBooking);
+    bindTap(element("book-cancel"), resetBooking);
+    bindTap(element("book-submit"), submitBooking);
+    var durationButtons = document.getElementsByClassName("duration-button");
+    for (var i = 0; i < durationButtons.length; i += 1) {
+      (function (button) {
+        bindTap(button, function () {
+          chooseDuration(Number(button.getAttribute("data-duration")));
+        });
+      }(durationButtons[i]));
+    }
   </script>
 </body>
 </html>
