@@ -1,20 +1,6 @@
 import { buildRoomStatus } from "../lib/room-status.js";
 import { fetchRelevantReservations, getAccessToken } from "../lib/joan.js";
-
-function roomsFromEnvironment() {
-  return {
-    lovelace: {
-      id: 1350162,
-      label: "Lovelace",
-      joanName: "London-Percy House-Lovelace (6)"
-    },
-    turing: {
-      id: process.env.JOAN_TURING_ROOM_ID || null,
-      label: "Turing",
-      joanName: "Add the exact Joan room name here"
-    }
-  };
-}
+import { roomsFromEnvironment } from "../lib/rooms.js";
 
 function setCors(req, res) {
   const allowedOrigin = process.env.DISPLAY_ORIGIN?.replace(/\/$/, "");
@@ -24,7 +10,7 @@ function setCors(req, res) {
   res.setHeader("Access-Control-Allow-Origin", allowedOrigin || "*");
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Booking-Key");
   return true;
 }
 
