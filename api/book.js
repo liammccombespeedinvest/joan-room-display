@@ -93,6 +93,7 @@ export default async function handler(req, res) {
     if (!joanRoom.key) throw new Error("Joan room has no calendar address");
 
     const payload = buildReservationPayload({
+      roomId: room.id,
       roomCalendarEmail: joanRoom.key,
       organizerEmail,
       start: window.start,
