@@ -123,7 +123,9 @@
       color: #111;
       background: #fff;
       font: 700 24px/1 Arial, Helvetica, sans-serif;
+      cursor: pointer;
       touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .booking-button.primary {
@@ -245,6 +247,19 @@
       element(id).textContent = value || "";
     }
 
+    function bindTap(target, handler) {
+      var handledByTouch = false;
+      target.ontouchend = function (event) {
+        handledByTouch = true;
+        if (event && event.preventDefault) event.preventDefault();
+        handler.call(target, event);
+        setTimeout(function () { handledByTouch = false; }, 700);
+      };
+      target.onclick = function (event) {
+        if (!handledByTouch) handler.call(target, event);
+      };
+    }
+
     function resetBooking() {
       chosenDuration = null;
       element("book-open").hidden = false;
@@ -361,15 +376,17 @@
 
     update();
     setInterval(update, refreshMs);
-    element("book-open").onclick = openBookingOptions;
-    element("book-options-cancel").onclick = resetBooking;
-    element("book-cancel").onclick = resetBooking;
-    element("book-submit").onclick = submitBooking;
+    bindTap(element("book-open"), openBookingOptions);
+    bindTap(element("book-options-cancel"), resetBooking);
+    bindTap(element("book-cancel"), resetBooking);
+    bindTap(element("book-submit"), submitBooking);
     var durationButtons = document.getElementsByClassName("duration-button");
     for (var i = 0; i < durationButtons.length; i += 1) {
-      durationButtons[i].onclick = function () {
-        chooseDuration(Number(this.getAttribute("data-duration")));
-      };
+      (function (button) {
+        bindTap(button, function () {
+          chooseDuration(Number(button.getAttribute("data-duration")));
+        });
+      }(durationButtons[i]));
     }
   </script>
 </body>
